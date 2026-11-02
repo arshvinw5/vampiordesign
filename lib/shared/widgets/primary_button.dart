@@ -22,6 +22,9 @@ class PrimaryButton extends StatelessWidget {
     this.height = 56,
     this.minWidth,
     this.elevated = true,
+    this.expand = true,
+    this.destructive = false,
+    this.icon = Icons.arrow_forward,
   });
 
   final String label;
@@ -31,6 +34,16 @@ class PrimaryButton extends StatelessWidget {
   final double height;
   final double? minWidth;
   final bool elevated;
+
+  /// `true`: fill the available width (form CTAs). `false`: hug the label,
+  /// at least [minWidth] wide (e.g. the onboarding Next button).
+  final bool expand;
+
+  /// Red variant for irreversible actions (e.g. confirming Log out).
+  final bool destructive;
+
+  /// Trailing icon in the idle state.
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -45,66 +58,85 @@ class PrimaryButton extends StatelessWidget {
         constraints: BoxConstraints(minWidth: minWidth ?? 0),
         padding: const EdgeInsets.only(left: 24, right: 16),
         decoration: BoxDecoration(
-          color: pressed
-              ? AppColors.navyPressed
-              : hovered
-                  ? AppColors.blue
-                  : AppColors.navy,
+          color: destructive
+              ? (pressed
+                    ? AppColors.errorPressed
+                    : hovered
+                    ? AppColors.errorHover
+                    : AppColors.error)
+              : (pressed
+                    ? AppColors.navyPressed
+                    : hovered
+                    ? AppColors.blue
+                    : AppColors.navy),
           borderRadius: BorderRadius.circular(8),
           boxShadow: elevated
-              ? const [BoxShadow(color: Color(0x33023E8A), blurRadius: 24, offset: Offset(0, 8))]
+              ? [
+                  BoxShadow(
+                    color: (destructive ? AppColors.error : AppColors.navy).withValues(alpha: 0.2),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
               : null,
         ),
         child: ExcludeSemantics(
-          child: Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              _SwapLayer(
-                visible: !loading,
-                exitDy: -6,
-                reduced: reduced,
-                child: _Row(text: label, trailing: const Icon(Icons.arrow_forward, size: 20)),
-              ),
-              _SwapLayer(
-                visible: loading,
-                exitDy: 6,
-                reduced: reduced,
-                // Pause the spinner's ticker while hidden so idle screens settle.
-                child: TickerMode(
-                  enabled: loading,
-                  child: _Row(text: loadingLabel ?? label, trailing: const _Spinner()),
+          child: _maybeIntrinsic(
+            Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                _SwapLayer(
+                  visible: !loading,
+                  exitDy: -6,
+                  reduced: reduced,
+                  child: _Row(text: label, expand: expand, trailing: Icon(icon, size: 20)),
                 ),
-              ),
-            ],
+                _SwapLayer(
+                  visible: loading,
+                  exitDy: 6,
+                  reduced: reduced,
+                  // Pause the spinner's ticker while hidden so idle screens settle.
+                  child: TickerMode(
+                    enabled: loading,
+                    child: _Row(
+                      text: loadingLabel ?? label,
+                      expand: expand,
+                      trailing: const _Spinner(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _maybeIntrinsic(Widget child) => expand ? child : IntrinsicWidth(child: child);
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.text, required this.trailing});
+  const _Row({required this.text, required this.trailing, required this.expand});
   final String text;
   final Widget trailing;
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
+    final label = Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AppTextStyles.button.copyWith(color: Colors.white),
+    );
     return IconTheme(
       data: const IconThemeData(color: Colors.white),
       child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.button.copyWith(color: Colors.white),
-            ),
-          ),
-          const SizedBox(width: 16),
-          trailing,
-        ],
+        children: expand
+            ? [Expanded(child: label), const SizedBox(width: 16), trailing]
+            // Inside IntrinsicWidth: hug the label, arrow pushed to the right edge.
+            : [label, const SizedBox(width: 16), const Spacer(), trailing],
       ),
     );
   }

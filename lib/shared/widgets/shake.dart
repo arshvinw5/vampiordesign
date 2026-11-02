@@ -13,8 +13,10 @@ class Shake extends StatefulWidget {
 }
 
 class ShakeState extends State<Shake> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: AppMotion.shake);
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: AppMotion.shake,
+  );
 
   late final Animation<double> _dx = TweenSequence<double>([
     TweenSequenceItem(tween: Tween(begin: 0, end: -6), weight: 1),

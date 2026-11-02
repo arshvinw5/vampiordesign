@@ -22,11 +22,11 @@ abstract final class DioErrorMapper {
   }
 
   static Failure _fromStatus(int? status, String? message) => switch (status) {
-        401 => InvalidCredentialsFailure(message ?? const InvalidCredentialsFailure().message),
-        404 => UserNotFoundFailure(message ?? const UserNotFoundFailure().message),
-        409 => ConflictFailure(message ?? const ConflictFailure().message),
-        _ => const ServerFailure(),
-      };
+    401 => InvalidCredentialsFailure(message ?? const InvalidCredentialsFailure().message),
+    404 => UserNotFoundFailure(message ?? const UserNotFoundFailure().message),
+    409 => ConflictFailure(message ?? const ConflictFailure().message),
+    _ => const ServerFailure(),
+  };
 
   static String? _message(Object? data) =>
       data is Map && data['message'] is String ? data['message'] as String : null;

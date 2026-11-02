@@ -73,7 +73,9 @@ class _SuccessBadgeState extends State<SuccessBadge> with TickerProviderStateMix
               child: const DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppColors.navy,
-                  boxShadow: [BoxShadow(color: Color(0x4D023E8A), blurRadius: 32, offset: Offset(0, 12))],
+                  boxShadow: [
+                    BoxShadow(color: Color(0x4D023E8A), blurRadius: 32, offset: Offset(0, 12)),
+                  ],
                 ),
                 child: Icon(Icons.check, size: 36, color: Colors.white),
               ),

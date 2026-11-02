@@ -14,5 +14,7 @@ abstract final class AppColors {
   static const ink64 = Color(0xA30B1D33);
   static const ink40 = Color(0x660B1D33);
   static const error = Color(0xFFC62828);
+  static const errorHover = Color(0xFFD84343);
+  static const errorPressed = Color(0xFF9E1F1F);
   static const surface = Color(0xFFFFFFFF);
 }

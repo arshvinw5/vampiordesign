@@ -67,21 +67,31 @@ class StatusBanner extends StatelessWidget {
   }
 }
 
-/// Floating snackbars for transient success / error feedback.
+/// Transient toast pinned to the **top** of the screen, so it never covers
+/// the CTA bar pinned at the bottom. Errors on forms use the inline
+/// [StatusBanner] instead; this is for one-off success confirmations.
 abstract final class AppSnackbar {
+  static const _toastHeight = 56.0;
+
   static void show(BuildContext context, String message, {StatusTone tone = StatusTone.success}) {
     final isError = tone == StatusTone.error;
+    final mq = MediaQuery.of(context);
+    final fromBottom = mq.size.height - mq.viewInsets.bottom - mq.padding.top - _toastHeight - 16;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           backgroundColor: isError ? AppColors.error : AppColors.navy,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          margin: EdgeInsets.fromLTRB(16, 0, 16, fromBottom.clamp(16, double.infinity)),
+          dismissDirection: DismissDirection.up,
           content: Row(
             children: [
-              Icon(isError ? Icons.error_outline : Icons.check_circle_outline,
-                  color: Colors.white, size: 20),
+              Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: Colors.white,
+                size: 20,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(message, style: AppTextStyles.secondary.copyWith(color: Colors.white)),

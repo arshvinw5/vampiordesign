@@ -5,7 +5,7 @@ import '../../domain/usecases/login_user.dart';
 
 class LoginController extends FormController {
   LoginController({required this._loginUser, required GetRememberedIdentifier getRemembered})
-      : initialIdentifier = getRemembered().fold((_) => null, (id) => id);
+    : initialIdentifier = getRemembered().fold((_) => null, (id) => id);
 
   final LoginUser _loginUser;
 

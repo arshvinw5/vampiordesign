@@ -119,7 +119,9 @@ class _AppTextFieldState extends State<AppTextField> {
   bool get _validating => _touched || widget.forceValidation;
   String? get _error => _validating ? widget.validator?.call(widget.controller.text) : null;
   bool get _valid =>
-      _validating && widget.controller.text.isNotEmpty && widget.validator?.call(widget.controller.text) == null;
+      _validating &&
+      widget.controller.text.isNotEmpty &&
+      widget.validator?.call(widget.controller.text) == null;
 
   @override
   Widget build(BuildContext context) {
@@ -129,8 +131,8 @@ class _AppTextFieldState extends State<AppTextField> {
     final iconColor = hasError
         ? AppColors.error
         : valid
-            ? AppColors.blue
-            : AppColors.ink40;
+        ? AppColors.blue
+        : AppColors.ink40;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -187,7 +189,12 @@ class _AppTextFieldState extends State<AppTextField> {
                         width: 44,
                         child: AnimatedSwitcher(
                           duration: AppMotion.color,
-                          child: Icon(widget.icon, key: ValueKey(iconColor), size: 20, color: iconColor),
+                          child: Icon(
+                            widget.icon,
+                            key: ValueKey(iconColor),
+                            size: 20,
+                            color: iconColor,
+                          ),
                         ),
                       ),
                 prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 44),
@@ -199,8 +206,8 @@ class _AppTextFieldState extends State<AppTextField> {
                   hasError
                       ? AppColors.error
                       : valid
-                          ? AppColors.sky
-                          : AppColors.pale,
+                      ? AppColors.sky
+                      : AppColors.pale,
                 ),
                 focusedBorder: _border(hasError ? AppColors.error : AppColors.blue),
               ),
@@ -209,10 +216,7 @@ class _AppTextFieldState extends State<AppTextField> {
         ),
         if (widget.below != null) ...[const SizedBox(height: 8), widget.below!],
         const SizedBox(height: 8),
-        _MessageRow(
-          text: _error ?? (valid ? null : widget.hint),
-          isError: hasError,
-        ),
+        _MessageRow(text: _error ?? (valid ? null : widget.hint), isError: hasError),
       ],
     );
   }
@@ -239,9 +243,9 @@ class _AppTextFieldState extends State<AppTextField> {
   }
 
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: color, width: 2),
-      );
+    borderRadius: BorderRadius.circular(8),
+    borderSide: BorderSide(color: color, width: 2),
+  );
 }
 
 class _TextPrefix extends StatelessWidget {

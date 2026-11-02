@@ -11,13 +11,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:vampiordesigns/app.dart';
-import 'package:vampiordesigns/core/database/app_database.dart';
-import 'package:vampiordesigns/core/di/injection.dart';
+import 'package:vampiordesigns/core/di/service_locator.dart';
 import 'package:vampiordesigns/core/storage/preferences_data_source.dart';
+import 'package:vampiordesigns/mock_backend/database/app_database.dart';
 
-import '../test/helpers/fake_user_data_source.dart';
+import '../test/helpers/app_harness.dart';
 
 const _latency = Duration(milliseconds: 1500);
 const _phone = Size(390, 844);
@@ -32,27 +30,27 @@ Future<void> _loadFonts() async {
     ..addFont(read('assets/fonts/Archivo-Bold.ttf'));
   await archivo.load();
 
-  final flutterRoot = Platform.environment['FLUTTER_ROOT'] ??
+  final flutterRoot =
+      Platform.environment['FLUTTER_ROOT'] ??
       File(Platform.resolvedExecutable).parent.parent.parent.parent.parent.parent.path;
   final icons = FontLoader('MaterialIcons')
     ..addFont(read('$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf'));
   await icons.load();
 }
 
-Future<void> _pumpApp(WidgetTester tester, {required bool onboardingSeen, Size size = _phone}) async {
+Future<void> _pumpApp(
+  WidgetTester tester, {
+  required bool onboardingSeen,
+  Size size = _phone,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
-  // ignore: invalid_use_of_visible_for_testing_member
-  SharedPreferences.setMockInitialValues({
-    if (onboardingSeen) PreferencesDataSource.onboardingSeenKey: true,
-  });
-  final deps = await AppDependencies.init(
-    prefs: await SharedPreferences.getInstance(),
-    users: FakeUserDataSource(),
+  await pumpVampiorApp(
+    tester,
+    prefs: {if (onboardingSeen) PreferencesDataSource.onboardingSeenKey: true},
     apiLatency: _latency,
+    wrap: (app) => RepaintBoundary(key: _boundary, child: app),
   );
-  await tester.pumpWidget(RepaintBoundary(key: _boundary, child: VampiorApp(dependencies: deps)));
-  await tester.pumpAndSettle();
 }
 
 Future<void> _capture(WidgetTester tester, String name) async {
@@ -101,6 +99,7 @@ Future<void> _finishRequest(WidgetTester tester) async {
 
 void main() {
   setUpAll(_loadFonts);
+  tearDown(resetDependencies);
 
   testWidgets('onboarding', (tester) async {
     await _pumpApp(tester, onboardingSeen: false);
@@ -134,6 +133,9 @@ void main() {
     await _tapKey(tester, 'login.submit', settle: false);
     await _finishRequest(tester);
     await _capture(tester, '08_login_success');
+
+    await _tapKey(tester, 'success.logout');
+    await _capture(tester, '08b_logout_confirm');
   });
 
   testWidgets('register states', (tester) async {
