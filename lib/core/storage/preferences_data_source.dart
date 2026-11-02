@@ -10,6 +10,7 @@ class PreferencesDataSource {
 
   static const onboardingSeenKey = 'vampior.onboardingSeen';
   static const rememberedIdKey = 'vampior.rememberedId';
+  static const keepSignedInKey = 'vampior.keepSignedIn';
 
   bool get onboardingSeen => _prefs.getBool(onboardingSeenKey) ?? false;
 
@@ -18,10 +19,16 @@ class PreferencesDataSource {
   String? get rememberedIdentifier => _prefs.getString(rememberedIdKey);
 
   Future<void> setRememberedIdentifier(String? id) => _guard(
-        () => id == null || id.isEmpty
-            ? _prefs.remove(rememberedIdKey)
-            : _prefs.setString(rememberedIdKey, id),
-      );
+    () => id == null || id.isEmpty
+        ? _prefs.remove(rememberedIdKey)
+        : _prefs.setString(rememberedIdKey, id),
+  );
+
+  /// The user's "Remember me" choice at sign-in. When `true`, the next
+  /// launch restores the session from secure storage (auto-login).
+  bool get keepSignedIn => _prefs.getBool(keepSignedInKey) ?? false;
+
+  Future<void> setKeepSignedIn(bool value) => _guard(() => _prefs.setBool(keepSignedInKey, value));
 
   Future<void> _guard(Future<bool> Function() write) async {
     final ok = await write();

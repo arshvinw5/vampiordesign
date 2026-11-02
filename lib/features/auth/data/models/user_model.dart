@@ -11,18 +11,18 @@ class UserModel extends User {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
-        id: json['id'] as int,
-        fullName: json['fullName'] as String,
-        email: json['email'] as String,
-        mobile: json['mobile'] as String,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as int,
+    fullName: json['fullName'] as String,
+    email: json['email'] as String,
+    mobile: json['mobile'] as String,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'fullName': fullName,
-        'email': email,
-        'mobile': mobile,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'fullName': fullName,
+    'email': email,
+    'mobile': mobile,
+    'createdAt': createdAt.toIso8601String(),
+  };
 }

@@ -7,8 +7,7 @@ import 'package:crypto/crypto.dart';
 abstract final class PasswordHasher {
   static const _salt = 'vampior.mock.v1';
 
-  static String hash(String password) =>
-      sha256.convert(utf8.encode('$_salt:$password')).toString();
+  static String hash(String password) => sha256.convert(utf8.encode('$_salt:$password')).toString();
 
   static bool verify(String password, String hashed) => hash(password) == hashed;
 }

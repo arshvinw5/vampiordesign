@@ -22,11 +22,11 @@ class RegisterRequest {
   final String password;
 
   Map<String, dynamic> toJson() => {
-        'fullName': fullName,
-        'email': email,
-        'mobile': mobile,
-        'password': password,
-      };
+    'fullName': fullName,
+    'email': email,
+    'mobile': mobile,
+    'password': password,
+  };
 }
 
 class ForgotPasswordRequest {

@@ -57,13 +57,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       return;
     }
     FocusScope.of(context).unfocus();
-    final ok = await controller.send(_identifier.text);
-    if (!mounted) return;
-    AppSnackbar.show(
-      context,
-      ok ? 'Reset link sent' : controller.errorMessage ?? 'Could not send reset link',
-      tone: ok ? StatusTone.success : StatusTone.error,
-    );
+    // Success and failure are both shown inline (StatusBanner).
+    await controller.send(_identifier.text);
   }
 
   @override
@@ -108,7 +103,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     )
                   : AppTextLink(
                       label: 'Resend link',
-                      onPressed: controller.canResend ? () => controller.send(controller.sentTo!) : null,
+                      onPressed: controller.canResend
+                          ? () => controller.send(controller.sentTo!)
+                          : null,
                     ),
             )
           else if (controller.errorMessage != null)

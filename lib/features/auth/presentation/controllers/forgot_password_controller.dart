@@ -4,10 +4,7 @@ import '../../../../core/presentation/form_controller.dart';
 import '../../domain/usecases/request_password_reset.dart';
 
 class ForgotPasswordController extends FormController {
-  ForgotPasswordController({
-    required this._requestReset,
-    this.cooldownSeconds = 30,
-  });
+  ForgotPasswordController({required this._requestReset, this.cooldownSeconds = 30});
 
   final RequestPasswordReset _requestReset;
   final int cooldownSeconds;

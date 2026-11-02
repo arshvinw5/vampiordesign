@@ -6,7 +6,8 @@ import '../../../../core/usecase/usecase.dart';
 import '../entities/auth_session.dart';
 import '../repositories/auth_repository.dart';
 
-/// Logs in, then saves or clears the "Remember me" identifier.
+/// Logs in, then applies "Remember me": saves (or clears) the identifier and
+/// whether the next launch may sign in automatically.
 class LoginUser implements UseCase<AuthSession, LoginParams> {
   const LoginUser(this._repository);
   final AuthRepository _repository;
@@ -20,6 +21,7 @@ class LoginUser implements UseCase<AuthSession, LoginParams> {
     if (result.isRight()) {
       // Failing to save the preference must not block a successful login.
       await _repository.setRememberedIdentifier(params.rememberMe ? params.identifier : null);
+      await _repository.setKeepSignedIn(params.rememberMe);
     }
     return result;
   }

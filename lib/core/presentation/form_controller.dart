@@ -44,13 +44,10 @@ abstract class FormController extends ChangeNotifier {
     notifyListeners();
 
     final result = await task();
-    result.fold(
-      (f) {
-        _status = RequestStatus.failure;
-        _failure = f;
-      },
-      (_) => _status = RequestStatus.success,
-    );
+    result.fold((f) {
+      _status = RequestStatus.failure;
+      _failure = f;
+    }, (_) => _status = RequestStatus.success);
     notifyListeners();
     return result;
   }

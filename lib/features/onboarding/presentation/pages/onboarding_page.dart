@@ -67,43 +67,127 @@ class _OnboardingPageState extends State<OnboardingPage> {
             ),
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Row(
-                children: [
-                  Transform.translate(
-                    offset: const Offset(-4, 0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (var i = 0; i < slides.length; i++)
-                          _ProgressSegment(
-                            active: i == controller.index,
-                            label: 'Go to step ${i + 1}',
-                            onTap: () => _goTo(i),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  if (!controller.isFirst) ...[
-                    _BackSquare(onTap: () => _goTo(controller.index - 1)),
-                    const SizedBox(width: 8),
-                  ],
-                  Flexible(
-                    child: PrimaryButton(
-                      key: const Key('onboarding.next'),
-                      label: controller.isLast ? 'Get started' : 'Next',
-                      height: 48,
-                      minWidth: 140,
-                      elevated: false,
-                      onPressed: controller.isLast ? _finish : () => _goTo(controller.index + 1),
-                    ),
-                  ),
-                ],
+              child: _OnboardingControls(
+                index: controller.index,
+                count: slides.length,
+                isFirst: controller.isFirst,
+                isLast: controller.isLast,
+                onDot: _goTo,
+                onBack: () => _goTo(controller.index - 1),
+                onNext: controller.isLast ? _finish : () => _goTo(controller.index + 1),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Progress dots + Back + Next/Get started.
+///
+/// If everything fits (measured with the real label style and the user's
+/// text scale): one row, dots left, buttons right. Otherwise (320px phones,
+/// large accessibility text), dots sit above and Next fills the row, so
+/// "Get started" is never squeezed or clipped.
+class _OnboardingControls extends StatelessWidget {
+  const _OnboardingControls({
+    required this.index,
+    required this.count,
+    required this.isFirst,
+    required this.isLast,
+    required this.onDot,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  final int index;
+  final int count;
+  final bool isFirst;
+  final bool isLast;
+  final ValueChanged<int> onDot;
+  final VoidCallback onBack;
+  final VoidCallback onNext;
+
+  static const _dotsWidth = 96.0; // 3 × 32px tap targets
+  static const _backWidth = 48.0 + 8;
+  static const _buttonChrome = 24.0 + 16 + 16 + 20; // padding, gap, arrow
+  static const _buttonMinWidth = 152.0;
+
+  /// Width the one-row layout needs, measured with the longest label.
+  double _rowWidthNeeded(BuildContext context) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: 'Get started',
+        style: DefaultTextStyle.of(context).style.merge(AppTextStyles.button),
+      ),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    final button = (painter.width + _buttonChrome).clamp(_buttonMinWidth, double.infinity);
+    painter.dispose();
+    return _dotsWidth + _backWidth + button;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final compact = c.maxWidth < _rowWidthNeeded(context);
+        final dots = Transform.translate(
+          offset: const Offset(-4, 0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < count; i++)
+                _ProgressSegment(
+                  active: i == index,
+                  label: 'Go to step ${i + 1}',
+                  onTap: () => onDot(i),
+                ),
+            ],
+          ),
+        );
+        final next = PrimaryButton(
+          key: const Key('onboarding.next'),
+          label: isLast ? 'Get started' : 'Next',
+          height: 48,
+          minWidth: 152,
+          elevated: false,
+          expand: compact,
+          onPressed: onNext,
+        );
+        final back = [
+          if (!isFirst) ...[_BackSquare(onTap: onBack), const SizedBox(width: 8)],
+        ];
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              dots,
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  ...back,
+                  Expanded(child: next),
+                ],
+              ),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(
+              child: Align(alignment: Alignment.centerLeft, child: dots),
+            ),
+            ...back,
+            next,
+          ],
+        );
+      },
     );
   }
 }

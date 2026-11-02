@@ -33,3 +33,8 @@ class ConflictFailure extends Failure {
 class CacheFailure extends Failure {
   const CacheFailure([super.message = 'Could not access local storage']);
 }
+
+/// Access and refresh tokens are no longer valid; the user must sign in again.
+class SessionExpiredFailure extends Failure {
+  const SessionExpiredFailure([super.message = 'Your session has expired. Please log in again.']);
+}

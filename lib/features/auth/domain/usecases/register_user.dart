@@ -10,13 +10,18 @@ class RegisterUser implements UseCase<AuthSession, RegisterParams> {
   const RegisterUser(this._repository);
   final AuthRepository _repository;
 
+  /// Creates the account and signs in. New accounts stay signed in.
   @override
-  Future<Either<Failure, AuthSession>> call(RegisterParams params) => _repository.register(
-        fullName: params.fullName,
-        email: params.email,
-        mobile: params.mobile,
-        password: params.password,
-      );
+  Future<Either<Failure, AuthSession>> call(RegisterParams params) async {
+    final result = await _repository.register(
+      fullName: params.fullName,
+      email: params.email,
+      mobile: params.mobile,
+      password: params.password,
+    );
+    if (result.isRight()) await _repository.setKeepSignedIn(true);
+    return result;
+  }
 }
 
 class RegisterParams extends Equatable {

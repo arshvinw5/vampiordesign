@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'app.dart';
-import 'core/di/injection.dart';
+import 'core/di/service_locator.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final dependencies = await AppDependencies.init();
-  runApp(VampiorApp(dependencies: dependencies));
+  await configureDependencies();
+  runApp(const VampiorApp());
 }

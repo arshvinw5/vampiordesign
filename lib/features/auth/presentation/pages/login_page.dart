@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/router/app_routes.dart';
-import '../../../../core/utils/phone_formatter.dart';
 import '../../../../core/validation/validators.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/primary_button.dart';
@@ -63,10 +62,7 @@ class _LoginPageState extends State<LoginPage> {
     final session = await controller.login(identifier: _identifier.text, password: _password.text);
     if (!mounted) return;
 
-    if (session == null) {
-      AppSnackbar.show(context, controller.errorMessage ?? 'Login failed', tone: StatusTone.error);
-      return;
-    }
+    if (session == null) return; // the inline StatusBanner shows the failure
     final id = _identifier.text.trim();
     AppSnackbar.show(context, 'Welcome back, ${session.user.firstName}!');
     Navigator.of(context).pushNamedAndRemoveUntil(
@@ -75,12 +71,7 @@ class _LoginPageState extends State<LoginPage> {
       arguments: SuccessArgs(
         title: 'Welcome back',
         body: 'You’re signed in and ready to go.',
-        rows: [
-          ('Account', id),
-          ('Name', session.user.fullName),
-          ('Mobile', LkMobile.international(session.user.mobile)),
-          ('Remember me', controller.rememberMe ? 'On' : 'Off'),
-        ],
+        rows: [('Signed in with', id), ('Remember me', controller.rememberMe ? 'On' : 'Off')],
       ),
     );
   }
@@ -137,8 +128,9 @@ class _LoginPageState extends State<LoginPage> {
             RememberForgotRow(
               rememberMe: controller.rememberMe,
               onRememberChanged: controller.setRememberMe,
-              onForgot: () => Navigator.of(context)
-                  .pushNamed(AppRoutes.forgotPassword, arguments: _identifier.text.trim()),
+              onForgot: () =>
+                  Navigator.of(context)
+                      .pushNamed(AppRoutes.forgotPassword, arguments: _identifier.text.trim()),
             ),
             if (controller.errorMessage != null) ...[
               const SizedBox(height: 16),

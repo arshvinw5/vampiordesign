@@ -16,22 +16,10 @@ abstract final class AppTextStyles {
     fontWeight: FontWeight.w400,
     color: AppColors.ink80,
   );
-  static const input = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    color: AppColors.ink,
-  );
+  static const input = TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.ink);
   static const button = TextStyle(fontSize: 16, fontWeight: FontWeight.w700);
-  static const label = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w700,
-    color: AppColors.ink,
-  );
-  static const link = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w700,
-    color: AppColors.navy,
-  );
+  static const label = TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink);
+  static const link = TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.navy);
   static const secondary = TextStyle(fontSize: 14, color: AppColors.ink64);
   static const meta = TextStyle(fontSize: 12, height: 16 / 12, color: AppColors.ink64);
   static const counter = TextStyle(

@@ -5,7 +5,10 @@ import 'package:vampiordesigns/core/validation/validators.dart';
 
 void main() {
   group('Validators.identifier', () {
-    test('required', () => expect(Validators.identifier('  '), 'Email or mobile number is required'));
+    test(
+      'required',
+      () => expect(Validators.identifier('  '), 'Email or mobile number is required'),
+    );
     test('accepts email', () => expect(Validators.identifier('a@b.co'), isNull));
     test('accepts phone with spaces/plus', () {
       expect(Validators.identifier('+94 77 123 4567'), isNull);
@@ -20,7 +23,10 @@ void main() {
 
   group('Validators.loginPassword', () {
     test('required', () => expect(Validators.loginPassword(''), 'Password is required'));
-    test('min 6', () => expect(Validators.loginPassword('12345'), 'Password must be at least 6 characters'));
+    test(
+      'min 6',
+      () => expect(Validators.loginPassword('12345'), 'Password must be at least 6 characters'),
+    );
     test('ok', () => expect(Validators.loginPassword('123456'), isNull));
   });
 
@@ -60,8 +66,14 @@ void main() {
   });
 
   group('Validators.confirmPassword', () {
-    test('required', () => expect(Validators.confirmPassword('', 'x'), 'Please confirm your password'));
-    test('mismatch', () => expect(Validators.confirmPassword('abc', 'abd'), 'Passwords do not match'));
+    test(
+      'required',
+      () => expect(Validators.confirmPassword('', 'x'), 'Please confirm your password'),
+    );
+    test(
+      'mismatch',
+      () => expect(Validators.confirmPassword('abc', 'abd'), 'Passwords do not match'),
+    );
     test('ok', () => expect(Validators.confirmPassword('abc', 'abc'), isNull));
   });
 

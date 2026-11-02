@@ -5,16 +5,3 @@ class CacheException implements Exception {
   @override
   String toString() => 'CacheException: $message';
 }
-
-class DuplicateUserException implements Exception {
-  const DuplicateUserException(this.field);
-
-  /// `email` or `mobile`.
-  final String field;
-
-  String get message =>
-      field == 'mobile' ? 'Mobile number already registered' : 'Email already registered';
-
-  @override
-  String toString() => 'DuplicateUserException: $field';
-}

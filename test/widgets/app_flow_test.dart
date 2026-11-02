@@ -1,13 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:vampiordesigns/app.dart';
-import 'package:vampiordesigns/core/database/app_database.dart';
-import 'package:vampiordesigns/core/di/injection.dart';
+import 'package:vampiordesigns/core/auth/auth_tokens.dart';
+import 'package:vampiordesigns/core/di/service_locator.dart';
 import 'package:vampiordesigns/core/storage/preferences_data_source.dart';
+import 'package:vampiordesigns/mock_backend/database/app_database.dart';
 import 'package:vampiordesigns/shared/widgets/primary_button.dart';
 
-import '../helpers/fake_user_data_source.dart';
+import '../helpers/app_harness.dart';
+import '../helpers/fakes.dart';
 
 const _latency = Duration(milliseconds: 300);
 
@@ -16,20 +21,18 @@ Future<SharedPreferences> _prefs(Map<String, Object> values) async {
   return SharedPreferences.getInstance();
 }
 
-Future<void> _pumpApp(
+Future<AppHarness> _pumpApp(
   WidgetTester tester, {
-  Map<String, Object> prefs = const {PreferencesDataSource.onboardingSeenKey: true},
+  Map<String, Object> prefs = onboardingDone,
   SharedPreferences? instance,
-  FakeUserDataSource? users,
-}) async {
-  final deps = await AppDependencies.init(
-    prefs: instance ?? await _prefs(prefs),
-    users: users ?? FakeUserDataSource(),
-    apiLatency: _latency,
-  );
-  await tester.pumpWidget(VampiorApp(dependencies: deps));
-  await tester.pumpAndSettle();
-}
+  FakeUserStore? users,
+}) => pumpVampiorApp(
+  tester,
+  prefs: prefs,
+  prefsInstance: instance,
+  users: users,
+  apiLatency: _latency,
+);
 
 Future<void> _tapText(WidgetTester tester, String text) async {
   await tester.ensureVisible(find.text(text).last);
@@ -50,6 +53,16 @@ Future<void> _submit(WidgetTester tester, String key) async {
   await tester.pumpAndSettle();
 }
 
+/// Taps Log out, confirms the dialog, and waits for the logout API call.
+Future<void> _logOut(WidgetTester tester) async {
+  await _tapKey(tester, 'success.logout');
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('dialog.confirm')));
+  await tester.pump();
+  await tester.pump(_latency);
+  await tester.pumpAndSettle();
+}
+
 Future<void> _enter(WidgetTester tester, String key, String text) async {
   await tester.ensureVisible(find.byKey(Key(key)));
   await tester.enterText(find.byKey(Key(key)), text);
@@ -57,6 +70,8 @@ Future<void> _enter(WidgetTester tester, String key, String text) async {
 }
 
 void main() {
+  tearDown(resetDependencies);
+
   group('Onboarding', () {
     testWidgets('shows on first launch only; Skip persists and opens Login', (tester) async {
       final prefs = await _prefs({});
@@ -85,6 +100,88 @@ void main() {
     });
   });
 
+  group('Launch / auto-login', () {
+    /// Logs in through the UI, then "relaunches" the app reusing the same
+    /// preferences, secure storage and backend (as a real restart would).
+    Future<AppHarness> loginThenRelaunch(
+      WidgetTester tester, {
+      bool rememberMe = true,
+      Future<void> Function(AppHarness app)? beforeRelaunch,
+    }) async {
+      final app = await _pumpApp(tester);
+      if (!rememberMe) await tester.tap(find.byKey(const Key('login.remember')));
+      await _enter(tester, 'login.identifier', AppDatabase.demoEmail);
+      await _enter(tester, 'login.password', AppDatabase.demoPassword);
+      await _submit(tester, 'login.submit');
+      expect(find.text('Welcome back'), findsOneWidget);
+      await beforeRelaunch?.call(app);
+
+      await tester.pumpWidget(const SizedBox());
+      final relaunched = await pumpVampiorApp(
+        tester,
+        prefsInstance: app.prefs,
+        users: app.users,
+        sessions: app.sessions,
+        tokens: app.tokens,
+        apiLatency: _latency,
+      );
+      await tester.pump(_latency * 3);
+      await tester.pumpAndSettle();
+      return relaunched;
+    }
+
+    testWidgets('first launch → onboarding; seen + no session → login', (tester) async {
+      final prefs = await _prefs({});
+      await _pumpApp(tester, instance: prefs);
+      expect(find.text('Design that sets your brand apart'), findsOneWidget);
+      await _tapText(tester, 'Skip');
+      await _pumpApp(tester, instance: prefs);
+      expect(find.byKey(const Key('login.identifier')), findsOneWidget);
+    });
+
+    testWidgets('signed in + Remember me → relaunch opens the signed-in screen', (tester) async {
+      await loginThenRelaunch(tester);
+      expect(find.text('You\u2019re still signed in from your last session.'), findsOneWidget);
+      expect(find.text('Demo User'), findsOneWidget); // profile via /auth/me
+      expect(find.byKey(const Key('login.identifier')), findsNothing);
+    });
+
+    testWidgets('Remember me off → relaunch opens Login and drops the tokens', (tester) async {
+      final app = await loginThenRelaunch(tester, rememberMe: false);
+      expect(find.byKey(const Key('login.identifier')), findsOneWidget);
+      expect(app.tokens.tokens, isNull);
+    });
+
+    testWidgets('session revoked while closed → relaunch opens Login', (tester) async {
+      final app = await loginThenRelaunch(
+        tester,
+        beforeRelaunch: (app) async {
+          await app.sessions.revoke(app.tokens.tokens!.refreshToken);
+          // Force a refresh on launch: access token already expired.
+          app.tokens.tokens = AuthTokens(
+            accessToken: app.tokens.tokens!.accessToken,
+            refreshToken: app.tokens.tokens!.refreshToken,
+            accessExpiresAt: DateTime.now().toUtc().subtract(const Duration(minutes: 1)),
+          );
+        },
+      );
+      expect(find.byKey(const Key('login.identifier')), findsOneWidget);
+      expect(app.tokens.tokens, isNull);
+    });
+
+    testWidgets('log out → relaunch opens Login', (tester) async {
+      final app = await loginThenRelaunch(
+        tester,
+        beforeRelaunch: (app) async {
+          await _logOut(tester);
+          expect(find.byKey(const Key('login.identifier')), findsOneWidget);
+        },
+      );
+      expect(find.byKey(const Key('login.identifier')), findsOneWidget);
+      expect(app.tokens.tokens, isNull);
+    });
+  });
+
   group('Login', () {
     testWidgets('empty submit shows required errors', (tester) async {
       await _pumpApp(tester);
@@ -110,8 +207,11 @@ void main() {
     testWidgets('show / hide password toggles obscureText', (tester) async {
       await _pumpApp(tester);
       EditableText field() => tester.widget<EditableText>(
-            find.descendant(of: find.byKey(const Key('login.password')), matching: find.byType(EditableText)),
-          );
+        find.descendant(
+          of: find.byKey(const Key('login.password')),
+          matching: find.byType(EditableText),
+        ),
+      );
       expect(field().obscureText, isTrue);
       await tester.tap(find.byTooltip('Show password'));
       await tester.pump();
@@ -121,23 +221,72 @@ void main() {
       expect(field().obscureText, isTrue);
     });
 
-    testWidgets('success: loading state → Success → Log out keeps remembered id', (tester) async {
-      await _pumpApp(tester);
+    testWidgets(
+      'success: loading → tokens stored → profile from /auth/me → Log out revokes + clears',
+      (tester) async {
+        final app = await _pumpApp(tester);
+        await _enter(tester, 'login.identifier', AppDatabase.demoEmail);
+        await _enter(tester, 'login.password', AppDatabase.demoPassword);
+
+        await _tapKey(tester, 'login.submit');
+        await tester.pump();
+        expect(tester.widget<PrimaryButton>(find.byKey(const Key('login.submit'))).loading, isTrue);
+
+        await tester.pump(_latency);
+        await tester.pumpAndSettle(); // also waits for the /auth/me call
+        expect(find.text('Welcome back'), findsOneWidget);
+        final stored = app.tokens.tokens!;
+        expect(app.sessions.sessions[stored.refreshToken]!.revoked, isFalse);
+
+        // Profile rows came from the protected endpoint.
+        expect(find.text('Demo User'), findsOneWidget);
+        expect(find.text('+94 77 123 4567'), findsOneWidget);
+        expect(find.textContaining('Expires in'), findsOneWidget);
+        expect(find.text('Stored in secure storage'), findsOneWidget);
+
+        // Cancel first: nothing happens.
+        await _tapKey(tester, 'success.logout');
+        await tester.pumpAndSettle();
+        expect(find.text('Log out?'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('dialog.cancel')));
+        await tester.pumpAndSettle();
+        expect(find.text('Log out?'), findsNothing);
+        expect(app.tokens.tokens, isNotNull);
+        expect(find.text('Welcome back'), findsOneWidget);
+
+        // Confirm: session revoked, tokens cleared.
+        await _logOut(tester);
+        expect(app.tokens.tokens, isNull);
+        expect(app.sessions.sessions[stored.refreshToken]!.revoked, isTrue);
+        // Back on Login, identifier remembered.
+        expect(find.widgetWithText(TextField, AppDatabase.demoEmail), findsOneWidget);
+      },
+    );
+
+    testWidgets('revoked session on Success → back to Login with "session expired"', (
+      tester,
+    ) async {
+      final app = await _pumpApp(tester);
       await _enter(tester, 'login.identifier', AppDatabase.demoEmail);
       await _enter(tester, 'login.password', AppDatabase.demoPassword);
-
-      await _tapKey(tester, 'login.submit');
-      await tester.pump();
-      expect(tester.widget<PrimaryButton>(find.byKey(const Key('login.submit'))).loading, isTrue);
-
-      await tester.pump(_latency);
-      await tester.pumpAndSettle();
+      await _submit(tester, 'login.submit');
       expect(find.text('Welcome back'), findsOneWidget);
-      expect(find.text(AppDatabase.demoEmail), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('success.logout')));
+      // Server revokes the session; the access token is also rejected.
+      await app.sessions.revoke(app.tokens.tokens!.refreshToken);
+      app.tokens.tokens = AuthTokens(
+        accessToken: 'bogus.token.sig',
+        refreshToken: app.tokens.tokens!.refreshToken,
+        accessExpiresAt: DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      );
+
+      await _tapKey(tester, 'success.refresh');
+      await tester.pump();
+      await tester.pump(_latency * 3);
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, AppDatabase.demoEmail), findsOneWidget);
+      expect(find.byKey(const Key('login.identifier')), findsOneWidget);
+      expect(find.text('Session expired, please log in again'), findsOneWidget);
+      expect(app.tokens.tokens, isNull);
     });
 
     testWidgets('wrong password shows API error', (tester) async {
@@ -159,13 +308,17 @@ void main() {
   });
 
   group('Register', () {
-    Future<void> openRegister(WidgetTester tester, {FakeUserDataSource? users}) async {
+    Future<void> openRegister(WidgetTester tester, {FakeUserStore? users}) async {
       await _pumpApp(tester, users: users);
       await _tapText(tester, 'Create one');
       expect(find.text('Create account'), findsWidgets);
     }
 
-    Future<void> fill(WidgetTester tester, {String email = 'jane@doe.com', String confirm = 'abcdefg1'}) async {
+    Future<void> fill(
+      WidgetTester tester, {
+      String email = 'jane@doe.com',
+      String confirm = 'abcdefg1',
+    }) async {
       await _enter(tester, 'register.name', 'Jane Doe');
       await _enter(tester, 'register.email', email);
       await _enter(tester, 'register.mobile', '0712345678');
@@ -198,17 +351,17 @@ void main() {
     });
 
     testWidgets('creates account → Success; duplicate email → error', (tester) async {
-      final users = FakeUserDataSource();
+      final users = FakeUserStore();
       await openRegister(tester, users: users);
       await fill(tester);
       await _submit(tester, 'register.submit');
       expect(find.text('Account created'), findsOneWidget);
       expect(find.text('+94 71 234 5678'), findsOneWidget);
       expect(users.rows.length, 2);
+      expect(find.text('Jane Doe'), findsOneWidget); // from /auth/me
 
-      // Log out → register again with the same email.
-      await tester.tap(find.byKey(const Key('success.logout')));
-      await tester.pumpAndSettle();
+      // Log out (revokes the session over the API) → register again with the same email.
+      await _logOut(tester);
       await _tapText(tester, 'Create one');
       await fill(tester);
       await _submit(tester, 'register.submit');
@@ -233,6 +386,41 @@ void main() {
     await _submit(tester, 'forgot.submit');
     expect(find.byKey(const Key('forgot.sent')), findsOneWidget);
     expect(find.textContaining('Resend available in'), findsOneWidget);
+  });
+
+  group('Onboarding controls', () {
+    // Real glyph widths matter here (the test font draws every glyph 1em wide).
+    setUpAll(() async {
+      Future<ByteData> read(String path) async =>
+          ByteData.sublistView(Uint8List.fromList(await File(path).readAsBytes()));
+      await (FontLoader('Archivo')
+            ..addFont(read('assets/fonts/Archivo-Regular.ttf'))
+            ..addFont(read('assets/fonts/Archivo-Bold.ttf')))
+          .load();
+    });
+
+    for (final width in const [320.0, 390.0]) {
+      testWidgets('Next / Get started is never squeezed at ${width.toInt()}px', (tester) async {
+        tester.view.physicalSize = Size(width, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await _pumpApp(tester, prefs: {});
+
+        for (var slide = 0; slide < 3; slide++) {
+          final button = find.byKey(const Key('onboarding.next'));
+          expect(tester.getSize(button).width, greaterThanOrEqualTo(152), reason: 'slide $slide');
+          final label = slide == 2 ? 'Get started' : 'Next';
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.descendant(of: button, matching: find.text(label)).first,
+          );
+          expect(paragraph.didExceedMaxLines, isFalse, reason: '"$label" clipped on slide $slide');
+          // Button stays inside the screen with the 24px gutter.
+          expect(tester.getTopRight(button).dx, lessThanOrEqualTo(width - 24 + 0.5));
+          if (slide < 2) await _tapText(tester, 'Next');
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 
   group('Responsive', () {

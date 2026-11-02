@@ -3,7 +3,8 @@ import 'package:dio/dio.dart';
 import 'mock_auth_server.dart';
 
 /// Short-circuits every Dio request into [MockAuthServer] after a simulated
-/// network latency. Remove this interceptor to talk to a real backend.
+/// network latency. It must be the **last** interceptor, so auth headers are
+/// already attached. Remove it to talk to a real backend.
 class MockApiInterceptor extends Interceptor {
   MockApiInterceptor(this._server, {this.latency = const Duration(milliseconds: 1500)});
 
@@ -14,7 +15,12 @@ class MockApiInterceptor extends Interceptor {
   Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
     await Future<void>.delayed(latency);
     try {
-      final mock = await _server.handle(options.method, options.path, options.data);
+      final mock = await _server.handle(
+        options.method,
+        options.path,
+        options.data,
+        headers: options.headers,
+      );
       final response = Response<dynamic>(
         requestOptions: options,
         statusCode: mock.statusCode,

@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/router/app_routes.dart';
-import '../../../../core/utils/phone_formatter.dart';
 import '../../../../core/validation/validators.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/password_strength_meter.dart';
+import '../../../../shared/widgets/phone_field.dart';
 import '../../../../shared/widgets/primary_button.dart';
 import '../../../../shared/widgets/shake.dart';
 import '../../../../shared/widgets/status_banner.dart';
@@ -29,8 +29,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _focus = List.generate(5, (_) => FocusNode());
   final _shakeKey = GlobalKey<ShakeState>();
 
-  String get _mobileDigits => LkMobile.parse(_mobile.text);
-  String? _validateMobile(String? v) => Validators.mobile(LkMobile.parse(v ?? ''));
   String? _validateConfirm(String? v) => Validators.confirmPassword(v, _password.text);
 
   @override
@@ -62,7 +60,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final errors = [
       Validators.fullName(_name.text),
       Validators.email(_email.text),
-      _validateMobile(_mobile.text),
+      PhoneField.validate(_mobile.text),
       Validators.newPassword(_password.text),
       _validateConfirm(_confirm.text),
     ];
@@ -78,15 +76,12 @@ class _RegisterPageState extends State<RegisterPage> {
     final session = await controller.register(
       fullName: _name.text,
       email: _email.text,
-      mobileDigits: _mobileDigits,
+      mobileDigits: PhoneField.digitsOf(_mobile),
       password: _password.text,
     );
     if (!mounted) return;
 
-    if (session == null) {
-      AppSnackbar.show(context, controller.errorMessage ?? 'Registration failed', tone: StatusTone.error);
-      return;
-    }
+    if (session == null) return; // the inline StatusBanner shows the failure
     final user = session.user;
     AppSnackbar.show(context, 'Account created successfully');
     Navigator.of(context).pushNamedAndRemoveUntil(
@@ -95,11 +90,7 @@ class _RegisterPageState extends State<RegisterPage> {
       arguments: SuccessArgs(
         title: 'Account created',
         body: 'Welcome, ${user.firstName}. Your account is ready.',
-        rows: [
-          ('Name', user.fullName),
-          ('Email', user.email),
-          ('Mobile', LkMobile.international(user.mobile)),
-        ],
+        rows: const [], // profile rows are loaded from /auth/me
       ),
     );
   }
@@ -152,20 +143,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     forceValidation: force,
                   ),
                   const SizedBox(height: 16),
-                  AppTextField(
+                  PhoneField(
                     fieldKey: const Key('register.mobile'),
                     controller: _mobile,
                     focusNode: _focus[2],
-                    label: 'Mobile number',
-                    placeholder: '77 123 4567',
-                    icon: Icons.smartphone,
-                    prefixText: LkMobile.prefix,
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.next,
-                    autofillHints: const [AutofillHints.telephoneNumberNational],
-                    inputFormatters: [LkMobileInputFormatter()],
-                    maxLength: 11,
-                    validator: _validateMobile,
                     forceValidation: force,
                   ),
                   const SizedBox(height: 16),

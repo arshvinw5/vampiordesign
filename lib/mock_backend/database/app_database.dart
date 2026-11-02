@@ -6,9 +6,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart' show databaseFactorySqflitePlugin;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import '../utils/password_hasher.dart';
+import '../security/password_hasher.dart';
 
-/// Owns the SQLite connection and schema.
+/// The mock backend's SQLite database (what a real server would keep in
+/// its own DB). The app never queries it directly, only over the API.
+///
+/// Schema history:
+/// - v1: `users`
+/// - v2: `sessions` (refresh tokens, rotated and revocable)
 class AppDatabase {
   AppDatabase._(this.db);
 
@@ -16,14 +21,15 @@ class AppDatabase {
 
   static const fileName = 'vampior.db';
   static const usersTable = 'users';
-  static const _version = 1;
+  static const sessionsTable = 'sessions';
+  static const version = 2;
 
   /// Seeded so the login flow can be demoed straight away.
   static const demoEmail = 'demo@vampior.com';
   static const demoMobile = '771234567';
   static const demoPassword = 'demo1234';
 
-  /// Opens (and creates on first run) the database.
+  /// Opens (and creates or migrates) the database.
   ///
   /// Pass [factory] + [path] (e.g. `inMemoryDatabasePath`) in tests.
   static Future<AppDatabase> open({DatabaseFactory? factory, String? path}) async {
@@ -31,7 +37,12 @@ class AppDatabase {
     final dbPath = path ?? p.join(await _defaultDirectory(dbFactory), fileName);
     final db = await dbFactory.openDatabase(
       dbPath,
-      options: OpenDatabaseOptions(version: _version, onCreate: _onCreate),
+      options: OpenDatabaseOptions(
+        version: version,
+        onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      ),
     );
     return AppDatabase._(db);
   }
@@ -55,16 +66,8 @@ class AppDatabase {
   }
 
   static Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE $usersTable (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        full_name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-        mobile TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    ''');
+    await _createUsers(db);
+    await _createSessions(db);
     await db.insert(usersTable, {
       'full_name': 'Demo User',
       'email': demoEmail,
@@ -73,6 +76,31 @@ class AppDatabase {
       'created_at': DateTime.now().toUtc().toIso8601String(),
     });
   }
+
+  static Future<void> _onUpgrade(Database db, int from, int to) async {
+    if (from < 2) await _createSessions(db);
+  }
+
+  static Future<void> _createUsers(Database db) => db.execute('''
+    CREATE TABLE $usersTable (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      full_name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      mobile TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  ''');
+
+  static Future<void> _createSessions(Database db) => db.execute('''
+    CREATE TABLE $sessionsTable (
+      refresh_token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES $usersTable(id) ON DELETE CASCADE,
+      expires_at TEXT NOT NULL,
+      revoked INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )
+  ''');
 
   Future<void> close() => db.close();
 }

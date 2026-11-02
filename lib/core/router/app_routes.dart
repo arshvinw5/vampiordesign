@@ -1,4 +1,6 @@
 abstract final class AppRoutes {
+  /// Launch screen: decides onboarding / login / home (auto-login).
+  static const startup = '/';
   static const onboarding = '/onboarding';
   static const login = '/login';
   static const register = '/register';
