@@ -92,8 +92,8 @@ silent refresh, rotation and revocation.
 ### Clone, install, run
 
 ```bash
-git clone https://github.com/arshvinw5/vampiordesigns.git
-cd vampiordesigns
+git clone https://github.com/arshvinw5/vampiordesign.git
+cd vampiordesign
 flutter pub get
 
 flutter devices                 # list targets
@@ -698,4 +698,3 @@ shadows without blur; on a device they look soft.
 - The mock backend runs inside the app; its signing secret is a constant (demo only).
 - No web build (sqflite).
 - The design's Caps Lock warning isn't implemented.
-- The clone URL assumes the GitHub repo `arshvinw5/vampiordesigns`.
