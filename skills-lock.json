@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "clean-architecture": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "clean-architecture/SKILL.md",
+      "computedHash": "d526366131a15502ba2231842239aeab66195592cf97e04f7bb162d675fb4cfb"
+    }
+  }
+}
